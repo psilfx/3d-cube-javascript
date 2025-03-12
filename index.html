@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Алгоритм Кируса-Бека 3д Куб</title>
+		<script src="js/vector.js"></script>
+		<script src="js/shape.js"></script>
+		<script src="js/camera.js"></script>
+		<script src="js/matrix.js"></script>
+		<script src="js/triangles.js"></script>
+		<script src="js/color.js"></script>
+		<script src="js/draw.js"></script>
+		<script src="js/light.js"></script>
+		<script src="js/clip.js"></script>
+	</head>
+	<body>
+		<canvas id="gjk-canvas" width="1280" height="720" ></canvas>
+		<style>
+			#gjk-canvas {
+				margin: 0 auto;
+				background-color: black;
+			}
+		</style>
+		<script>
+			//Основные константы
+			const canvas       = document.querySelector( "#gjk-canvas" );
+			const context      = canvas.getContext( "2d" );
+			context.font       = "20px roboto";
+			const widthH       = parseInt( canvas.width / 2 );
+			const heightH      = parseInt( canvas.height / 2 );
+			const zNear        = 0.1;
+			const zFar         = 100;
+			const fovDeg       = 45;
+			const aspectRation = canvas.height / canvas.width;
+			const fFovRad      = 1 / Math.tan( ( fovDeg * 0.5 ) / 180 * Math.PI ); 
+			const figscaleX    = widthH;
+			const figscaleY    = heightH;
+			//Объект куба
+			const cube = new Shape3D( [ 
+										new Vector3F( -1 , -1 , 1 ) , new Vector3F( -1 , -1 , 1 ) , new Vector3F( -1 , -1 , 1 ) , 
+										new Vector3F( -1 , 1 , 1 ) , new Vector3F( -1 , 1 , 1 ) , new Vector3F( -1 , 1 , 1 ) , 
+										new Vector3F( -1 , -1 , -1 ) , new Vector3F( -1 , -1 , -1 ) , new Vector3F( -1 , -1 , -1 ) , 
+										new Vector3F( -1 , 1 , -1 ) , new Vector3F( -1 , 1 , -1 ) , new Vector3F( -1 , 1 , -1 ) ,
+										new Vector3F( 1 , -1 , 1 ) , new Vector3F( 1 , -1 , 1 ) , new Vector3F( 1 , -1 , 1 ) , 
+										new Vector3F( 1 , 1 , 1 ) , new Vector3F( 1 , 1 , 1 ) , new Vector3F( 1 , 1 , 1 ) ,
+										new Vector3F( 1 , -1 , -1 ) , new Vector3F( 1 , -1 , -1 ) , new Vector3F( 1 , -1 , -1 ) , 
+										new Vector3F( 1 , 1 , -1 ) , new Vector3F( 1 , 1 , -1 ) , new Vector3F( 1 , 1 , -1 )
+									] );
+				cube.SetIndices( [ 
+									0 , 3 , 9 , 
+									0 , 9 , 6 , 
+									8 , 10 , 21 , 
+									8 , 21 , 19 , 
+									20 , 23 , 17 , 
+									20 , 17 , 14 , 
+									13 , 15 , 4 , 
+									13 , 4 , 2 , 
+									7 , 18 , 12 , 
+									7 , 12 , 1 , 
+									22 , 11 , 5 , 
+									22 , 5 , 16 
+									] );
+				cube.SetNormals( [ 
+									new Vector3F( -1 , 0 , 0 ) , new Vector3F( 0 , -1 , 0 ) , new Vector3F( 0 , 0 , 1 ) , 
+									new Vector3F( -1 , 0 , 0 ) , new Vector3F( 0 , 0 , 1 )  , new Vector3F( 0 , 1 , 0 ) , 
+									new Vector3F( -1 , 0 , 0 ) , new Vector3F( 0 , -1 , 0 ) , new Vector3F( 0 , 0 , -1 ), 
+									new Vector3F( -1 , 0 , 0 ) , new Vector3F( 0 , 0 , -1 ) , new Vector3F( 0 , 1 , 0 ), 
+									new Vector3F( 0 , -1 , 0 ) , new Vector3F( 0 , 0 , 1 )  , new Vector3F( 1 , 0 , 0 ) , 
+									new Vector3F( 0 , 0 , 1 )  , new Vector3F( 0 , 1 , 0 )  , new Vector3F( 1 , 0 , 0 ) , 
+									new Vector3F( 0 , -1 , 0 ) , new Vector3F( 0 , 0 , -1 ) , new Vector3F( 1 , 0 , 0 ) , 
+									new Vector3F( 0 , 0 , -1 ) , new Vector3F( 0 , 1 , 0 )  , new Vector3F( 1 , 0 , 0 ) 
+								] );
+				cube.CreateTriangles();
+			//Объекты матриц
+			const projectionMatrix = mat4.Perspective( mat4.Create() , fFovRad , aspectRation , zNear , zFar );
+			const viewMatrix       = mat4.Create();
+			//Положение куба
+			cube.translate.x = 0;
+			cube.translate.y = 0;
+			cube.translate.z = 5;
+			//Объект освещения
+			const globalLight = new Light( new Vector3F( 1 , 10 , 1 ) , new Color( 0 , 0 , 255 ) , 30 , 0.1 );
+			//Вывод текста сообщения вверху экрана
+			const text     = "WSAD для перемещения | RGB для смены цвета";
+			const textInfo = context.measureText( text );
+			const textPos  = parseInt( widthH - textInfo.width * 0.5 );
+			//Основной цикл
+			function Frame() {
+				mat4.LookAt( viewMatrix , camera.eye , camera.GetCenter() , camera.up );
+				context.clearRect(0, 0, canvas.width, canvas.height);
+				cube.RotateZ( 0.01 );
+				cube.RotateY( 0.01 );
+				cube.RotateX( 0.01 );
+				cube.Update();
+				cube.Draw();
+				context.fillStyle = "white";
+				context.fillText( text , textPos , 50 )
+				window.requestAnimationFrame( Frame );
+			}
+			canvas.onmousemove = function( e ) {
+				let offset = camera.GetOffset( e.movementX , -e.movementY );
+				camera.yaw  += offset[ 0 ];
+				camera.pitch = Math.max( Math.min( camera.pitch + offset[ 1 ] , 1.4 ) , -0.9 ); //Ограничения на поворот
+				camera.Rotate();
+			}
+			window.addEventListener( "keydown" , function( e ) {
+				if( e.keyCode == 87 ) {
+					camera.MoveFront( 1 );
+				}
+				if( e.keyCode == 83 ) {
+					camera.MoveFront( -1 );
+				}
+				if( e.keyCode == 65 ) {
+					camera.MoveStrafe( 1 );
+				}
+				if( e.keyCode == 68 ) {
+					camera.MoveStrafe( -1 );
+				}
+				if( e.keyCode == 82 ) {
+					globalLight.SetColor( new Color( 255 , 0 , 0 ) );
+				}
+				if( e.keyCode == 71 ) {
+					globalLight.SetColor( new Color( 0 , 255 , 0 ) );
+				}
+				if( e.keyCode == 66 ) {
+					globalLight.SetColor( new Color( 0 , 0 , 255 ) );
+				}
+			});
+			window.requestAnimationFrame( Frame );
+			canvas.addEventListener("click", async () => {
+				await canvas.requestFullscreen();
+				await canvas.requestPointerLock( {
+				unadjustedMovement: true,
+			});
+		});
+		</script>
+	</body>
+</html>
