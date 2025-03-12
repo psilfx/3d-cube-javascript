@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<title>Алгоритм Кируса-Бека 3д Куб</title>
+		<title>3д Куб на Javascript</title>
 		<script src="js/vector.js"></script>
 		<script src="js/shape.js"></script>
 		<script src="js/camera.js"></script>
@@ -13,16 +13,16 @@
 		<script src="js/clip.js"></script>
 	</head>
 	<body>
-		<canvas id="gjk-canvas" width="1280" height="720" ></canvas>
+		<canvas id="cube-canvas" width="1280" height="720" ></canvas>
 		<style>
-			#gjk-canvas {
+			#cube-canvas {
 				margin: 0 auto;
 				background-color: black;
 			}
 		</style>
 		<script>
 			//Основные константы
-			const canvas       = document.querySelector( "#gjk-canvas" );
+			const canvas       = document.querySelector( "#cube-canvas" );
 			const context      = canvas.getContext( "2d" );
 			context.font       = "20px roboto";
 			const widthH       = parseInt( canvas.width / 2 );
